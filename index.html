@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MA Content Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* ── Brand Colors ── */
+  :root {
+    --re:   #1a3a2a;   /* Royal Enfield — dark green */
+    --la:   #1e3a5f;   /* Lambretta — navy */
+    --gpx:  #b91c1c;   /* GPX/Zontes — red */
+    --ev:   #0d9488;   /* EV — teal */
+    --ma:   #1e293b;   /* Moto Addict — dark slate */
+  }
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background:#f8fafc; }
+
+  /* Tab active state */
+  .tab-btn.active { border-bottom: 3px solid #f97316; color: #f97316; font-weight:700; }
+  .tab-btn { transition: all .15s; }
+
+  /* Brand chips */
+  .chip-re  { background:#dcfce7; color:#166534; }
+  .chip-la  { background:#dbeafe; color:#1e40af; }
+  .chip-gpx { background:#fee2e2; color:#991b1b; }
+  .chip-ev  { background:#ccfbf1; color:#0f766e; }
+  .chip-zo  { background:#fef9c3; color:#854d0e; }
+  .chip-mg  { background:#fce7f3; color:#9d174d; }  /* Malaguti — pink */
+
+  /* Priority badges */
+  .badge-high { background:#fef2f2; color:#dc2626; border:1px solid #fca5a5; }
+  .badge-mid  { background:#fffbeb; color:#d97706; border:1px solid #fcd34d; }
+  .badge-low  { background:#f0fdf4; color:#16a34a; border:1px solid #86efac; }
+
+  /* Toast */
+  #toast {
+    position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(4rem);
+    transition: transform .3s ease; z-index:9999;
+    padding:.75rem 1.5rem; border-radius:999px; font-size:.875rem; font-weight:600;
+    box-shadow:0 4px 24px rgba(0,0,0,.15);
+  }
+  #toast.show { transform:translateX(-50%) translateY(0); }
+  #toast.ok   { background:#22c55e; color:#fff; }
+  #toast.warn { background:#f97316; color:#fff; }
+  #toast.err  { background:#ef4444; color:#fff; }
+
+  /* Kanban cards */
+  .idea-card { border-left:4px solid #e2e8f0; }
+  .idea-card.re  { border-left-color: var(--re); }
+  .idea-card.la  { border-left-color: var(--la); }
+  .idea-card.gpx { border-left-color: var(--gpx); }
+  .idea-card.ev  { border-left-color: var(--ev); }
+  .idea-card.zo  { border-left-color: #ca8a04; }
+  .idea-card.mg  { border-left-color: #be185d; }
+
+  /* Pages checkbox grid */
+  .page-group-label { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#94a3b8; padding:.25rem 0 .15rem; }
+  .page-cb-label { display:flex; align-items:center; gap:.4rem; font-size:.8rem; color:#475569; cursor:pointer; padding:.2rem .3rem; border-radius:.35rem; transition:background .1s; }
+  .page-cb-label:hover { background:#f1f5f9; }
+  .page-cb-label input[type=checkbox] { accent-color:#f97316; width:.9rem; height:.9rem; cursor:pointer; }
+
+  /* Loading spinner */
+  .spinner {
+    display:inline-block; width:1.25rem; height:1.25rem;
+    border:2px solid #e2e8f0; border-top-color:#f97316;
+    border-radius:50%; animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Tables */
+  .data-table th { background:#f1f5f9; font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; }
+  .data-table tr:hover td { background:#f8fafc; }
+
+  /* Scrollbar thin */
+  .thin-scroll::-webkit-scrollbar { width:4px; height:4px; }
+  .thin-scroll::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:2px; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ════════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════ -->
+<header class="sticky top-0 z-50 bg-slate-900 text-white shadow-lg">
+  <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center font-black text-white text-sm">MA</div>
+      <div>
+        <div class="font-bold text-base leading-none">MA Content Hub</div>
+        <div class="text-slate-400 text-xs mt-0.5">Moto Addict — ระบบจัดการ Content</div>
+      </div>
+    </div>
+    <div id="conn-status" class="text-xs px-2.5 py-1 rounded-full bg-slate-700 text-slate-300">กำลังเชื่อมต่อ...</div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="max-w-5xl mx-auto px-4 flex gap-1 overflow-x-auto thin-scroll">
+    <button class="tab-btn active px-4 py-2.5 text-sm whitespace-nowrap" onclick="switchTab('tab-post')">📊 Post Tracker</button>
+    <button class="tab-btn px-4 py-2.5 text-sm whitespace-nowrap text-slate-300" onclick="switchTab('tab-idea')">💡 Idea Bank</button>
+    <button class="tab-btn px-4 py-2.5 text-sm whitespace-nowrap text-slate-300" onclick="switchTab('tab-prompt')">✍️ Prompt Generator</button>
+    <button class="tab-btn px-4 py-2.5 text-sm whitespace-nowrap text-slate-300" onclick="switchTab('tab-story')">🎬 Storyboard</button>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════════
+     TOAST
+════════════════════════════════════════════════════════ -->
+<div id="toast"></div>
+
+<!-- ════════════════════════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════════════════════════ -->
+<main class="max-w-5xl mx-auto px-4 py-6">
+
+<!-- ┌─────────────────────────────────────────────────────┐
+     │  TAB 1: POST TRACKER                                │
+     └─────────────────────────────────────────────────────┘ -->
+<section id="tab-post">
+
+  <h2 class="text-lg font-bold text-slate-800 mb-4">📊 บันทึกการโพสต์</h2>
+
+  <!-- Quick-log form -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
+    <h3 class="font-semibold text-slate-700 mb-4 text-sm uppercase tracking-wide">➕ บันทึก Post ใหม่</h3>
+
+    <!-- Pages checkbox grid -->
+    <div class="mb-4">
+      <label class="block text-xs text-slate-500 mb-2">เพจที่ลง <span class="text-orange-400">(เลือกได้หลายเพจ)</span></label>
+      <div class="border border-slate-200 rounded-xl p-3 bg-slate-50 grid grid-cols-2 sm:grid-cols-3 gap-x-4">
+
+        <div>
+          <div class="page-group-label">🟢 Royal Enfield</div>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Royal Enfield Hatyai"> RE หาดใหญ่</label>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Royal Enfield Suratthani"> RE สุราษฎร์</label>
+        </div>
+
+        <div>
+          <div class="page-group-label">🔵 Lambretta</div>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Lambretta Hatyai"> Lambretta หาดใหญ่</label>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Lambretta Suratthani"> Lambretta สุราษฎร์</label>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Lambretta Phuket"> Lambretta ภูเก็ต</label>
+        </div>
+
+        <div>
+          <div class="page-group-label">🟡 Zontes</div>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Zontes Hatyai"> Zontes หาดใหญ่</label>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Zontes Suratthani"> Zontes สุราษฎร์</label>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Zontes Phuket"> Zontes ภูเก็ต</label>
+        </div>
+
+        <div>
+          <div class="page-group-label">🔴 GPX</div>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="GPX Hatyai"> GPX หาดใหญ่</label>
+          <div class="page-group-label mt-2">🩷 Malaguti</div>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Malaguti Hatyai"> Malaguti หาดใหญ่</label>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Malaguti Suratthani"> Malaguti สุราษฎร์</label>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Malaguti Phuket"> Malaguti ภูเก็ต</label>
+        </div>
+
+        <div>
+          <div class="page-group-label">🩵 EV</div>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="EV Addict (Felo/Rapid/Sunra)"> EV Addict</label>
+          <div class="page-group-label mt-2">⚫ Moto Addict</div>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Moto Addict Shop"> MA Shop</label>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Moto Addict Group"> MA Group</label>
+        </div>
+
+        <div>
+          <div class="page-group-label">📱 Other Platforms</div>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="TikTok"> TikTok</label>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Line OA"> Line OA</label>
+          <label class="page-cb-label"><input type="checkbox" class="page-cb" value="Instagram"> Instagram</label>
+        </div>
+
+      </div>
+      <div id="pages-selected-preview" class="mt-1.5 text-xs text-orange-600 font-medium min-h-4"></div>
+    </div>
+
+    <!-- Format + Pillar + Topic -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">Format</label>
+        <select id="p-format" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+          <option value="">— เลือก —</option>
+          <option>Album</option>
+          <option>Single Banner</option>
+          <option>Video</option>
+          <option>Reels</option>
+          <option>Story</option>
+          <option>Carousel</option>
+          <option>Infographic</option>
+          <option>Live</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">Content Pillar</label>
+        <select id="p-pillar" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+          <option value="">— เลือก —</option>
+          <option>Product</option>
+          <option>Promotion</option>
+          <option>Review</option>
+          <option>Lifestyle</option>
+          <option>Branding</option>
+          <option>Tips</option>
+          <option>Facts</option>
+          <option>Event</option>
+        </select>
+      </div>
+      <div class="col-span-2 sm:col-span-1">
+        <label class="block text-xs text-slate-500 mb-1">สถานะ</label>
+        <select id="p-status" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+          <option value="ลงแล้ว" selected>ลงแล้ว ✅</option>
+          <option value="เตรียมข้อมูล">เตรียมข้อมูล</option>
+          <option value="Brief เรียบร้อย">Brief เรียบร้อย</option>
+          <option value="รอ Creative">รอ Creative</option>
+          <option value="Draft">Draft</option>
+        </select>
+      </div>
+      <div class="col-span-2 sm:col-span-2">
+        <label class="block text-xs text-slate-500 mb-1">หัวข้อ / Topic</label>
+        <input id="p-title" type="text" placeholder="เช่น RE Meteor 350 รีวิวสั้น — ตะวันตกดิน" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">Note (optional)</label>
+        <input id="p-notes" type="text" placeholder="เช่น ยิง Boost 200 บาท" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button onclick="submitPost()" id="btn-post-submit"
+        class="bg-orange-500 hover:bg-orange-600 text-white px-7 py-2.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+        <span id="btn-post-spinner" class="hidden spinner"></span>
+        <span id="btn-post-label">บันทึก</span>
+      </button>
+      <button onclick="clearPostForm()" class="text-sm text-slate-400 hover:text-slate-600 transition">ล้างฟอร์ม</button>
+    </div>
+    <!-- Duplicate warning -->
+    <div id="dup-warn" class="hidden mt-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-sm text-amber-800"></div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="flex flex-wrap gap-2 mb-4 items-end">
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">กรอง: Format</label>
+      <select id="f-format" onchange="applyFilters()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none bg-white">
+        <option value="">ทั้งหมด</option>
+        <option>Album</option><option>Single Banner</option><option>Video</option>
+        <option>Reels</option><option>Story</option><option>Live</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">Pillar</label>
+      <select id="f-pillar" onchange="applyFilters()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none bg-white">
+        <option value="">ทั้งหมด</option>
+        <option>Product</option><option>Promotion</option><option>Review</option>
+        <option>Lifestyle</option><option>Branding</option><option>Tips</option><option>Event</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">ค้นหาเพจ</label>
+      <input id="f-page" oninput="applyFilters()" placeholder="เช่น Lambretta" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none bg-white w-36">
+    </div>
+    <button onclick="loadPosts()" class="ml-auto px-4 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-600 transition">🔄 รีเฟรช</button>
+  </div>
+
+  <!-- Posts table -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div id="posts-loading" class="p-8 text-center text-slate-400 text-sm">
+      <div class="spinner mx-auto mb-2"></div>กำลังโหลด...
+    </div>
+    <div id="posts-empty" class="hidden p-8 text-center text-slate-400 text-sm">ยังไม่มี post ใน 30 วันที่ผ่านมา</div>
+    <div id="posts-table-wrap" class="hidden overflow-x-auto thin-scroll">
+      <table class="w-full data-table text-sm">
+        <thead>
+          <tr>
+            <th class="px-4 py-3 text-left">วันที่</th>
+            <th class="px-4 py-3 text-left">เพจที่ลง</th>
+            <th class="px-4 py-3 text-left">Format</th>
+            <th class="px-4 py-3 text-left">Pillar</th>
+            <th class="px-4 py-3 text-left">หัวข้อ</th>
+            <th class="px-4 py-3 text-left">สถานะ</th>
+            <th class="px-4 py-3 text-left">Note</th>
+          </tr>
+        </thead>
+        <tbody id="posts-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</section>
+
+<!-- ┌─────────────────────────────────────────────────────┐
+     │  TAB 2: IDEA BANK (placeholder — filled next)      │
+     └─────────────────────────────────────────────────────┘ -->
+<section id="tab-idea" class="hidden">
+  <div id="idea-content">
+    <div class="p-8 text-center text-slate-400 text-sm"><div class="spinner mx-auto mb-2"></div>กำลังโหลด...</div>
+  </div>
+</section>
+
+<!-- ┌─────────────────────────────────────────────────────┐
+     │  TAB 3: PROMPT GENERATOR (placeholder)             │
+     └─────────────────────────────────────────────────────┘ -->
+<section id="tab-prompt" class="hidden">
+  <div id="prompt-content">
+    <div class="p-8 text-center text-slate-400 text-sm"><div class="spinner mx-auto mb-2"></div>กำลังโหลด...</div>
+  </div>
+</section>
+
+<!-- ┌─────────────────────────────────────────────────────┐
+     │  TAB 4: STORYBOARD (placeholder)                   │
+     └─────────────────────────────────────────────────────┘ -->
+<section id="tab-story" class="hidden">
+  <div id="story-content">
+    <div class="p-8 text-center text-slate-400 text-sm"><div class="spinner mx-auto mb-2"></div>กำลังโหลด...</div>
+  </div>
+</section>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════ -->
+<script>
+// ══════════════════════════════════════════════════════
+// CONFIG — วาง URL ของ Google Apps Script ตรงนี้
+// ══════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let allPosts   = [];
+let allIdeas   = [];
+let allPrompts = [];
+let tabsLoaded = { 'tab-post': false, 'tab-idea': false, 'tab-prompt': false, 'tab-story': false };
+
+// ══════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════
+function toast(msg, type = 'ok', duration = 3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  setTimeout(() => { el.className = ''; }, duration);
+}
+
+async function apiGet(params) {
+  if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    return { ok: false, error: 'ยังไม่ได้ตั้งค่า APPS_SCRIPT_URL' };
+  }
+  const url = APPS_SCRIPT_URL + '?' + new URLSearchParams(params);
+  try {
+    const res = await fetch(url, { redirect: 'follow' });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+async function apiPost(body) {
+  if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    return { ok: false, error: 'ยังไม่ได้ตั้งค่า APPS_SCRIPT_URL' };
+  }
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      redirect: 'follow'
+    });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+function brandChipClass(brand) {
+  if (!brand) return 'bg-slate-100 text-slate-600';
+  const b = brand.toLowerCase();
+  if (b.includes('royal'))    return 'chip-re';
+  if (b.includes('lambretta')) return 'chip-la';
+  if (b.includes('malaguti')) return 'chip-mg';
+  if (b.includes('gpx'))      return 'chip-gpx';
+  if (b.includes('ev') || b.includes('felo') || b.includes('rapid') || b.includes('sunra')) return 'chip-ev';
+  if (b.includes('zontes'))   return 'chip-zo';
+  return 'bg-slate-100 text-slate-600';
+}
+
+function brandCardClass(brand) {
+  if (!brand) return '';
+  const b = brand.toLowerCase();
+  if (b.includes('royal'))    return 're';
+  if (b.includes('lambretta')) return 'la';
+  if (b.includes('malaguti')) return 'mg';
+  if (b.includes('gpx'))      return 'gpx';
+  if (b.includes('ev') || b.includes('felo')) return 'ev';
+  if (b.includes('zontes'))   return 'zo';
+  return '';
+}
+
+// Derive brand from page name for chip display
+function pageChipClass(pageName) {
+  return brandChipClass(pageName);
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' });
+}
+
+function setLoading(btnId, spinnerId, labelId, loading, label = 'บันทึก') {
+  document.getElementById(btnId).disabled = loading;
+  document.getElementById(spinnerId).classList.toggle('hidden', !loading);
+  document.getElementById(labelId).textContent = loading ? 'กำลังบันทึก...' : label;
+}
+
+// ══════════════════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════════════════
+function switchTab(tabId) {
+  ['tab-post','tab-idea','tab-prompt','tab-story'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+  });
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+    btn.classList.add('text-slate-300');
+  });
+
+  document.getElementById(tabId).classList.remove('hidden');
+  const idx = ['tab-post','tab-idea','tab-prompt','tab-story'].indexOf(tabId);
+  const btns = document.querySelectorAll('.tab-btn');
+  btns[idx].classList.add('active');
+  btns[idx].classList.remove('text-slate-300');
+
+  if (!tabsLoaded[tabId]) {
+    tabsLoaded[tabId] = true;
+    if (tabId === 'tab-idea')   initIdeaTab();
+    if (tabId === 'tab-prompt') initPromptTab();
+    if (tabId === 'tab-story')  initStoryTab();
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// TAB 1: POST TRACKER
+// ══════════════════════════════════════════════════════
+// ── Pages checkbox helpers ──────────────────────────────────
+function getSelectedPages() {
+  return [...document.querySelectorAll('.page-cb:checked')].map(cb => cb.value);
+}
+
+function updatePagesPreview() {
+  const pages = getSelectedPages();
+  const el = document.getElementById('pages-selected-preview');
+  if (!el) return;
+  el.textContent = pages.length ? '✓ ' + pages.join(' · ') : '';
+  checkDuplicate();
+}
+
+// Wire up page checkboxes (runs after DOM ready)
+function wirePageCheckboxes() {
+  document.querySelectorAll('.page-cb').forEach(cb => {
+    cb.addEventListener('change', updatePagesPreview);
+  });
+  ['p-format','p-pillar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', checkDuplicate);
+  });
+}
+
+function clearPostForm() {
+  document.querySelectorAll('.page-cb').forEach(cb => cb.checked = false);
+  ['p-format','p-pillar','p-status'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.selectedIndex = 0;
+  });
+  document.getElementById('p-status').value = 'ลงแล้ว';
+  document.getElementById('p-title').value = '';
+  document.getElementById('p-notes').value = '';
+  document.getElementById('pages-selected-preview').textContent = '';
+  document.getElementById('dup-warn').classList.add('hidden');
+}
+
+async function loadPosts() {
+  const params = { action: 'getPosts', days: 30 };
+  const fmt  = document.getElementById('f-format') ? document.getElementById('f-format').value : '';
+  const pil  = document.getElementById('f-pillar') ? document.getElementById('f-pillar').value : '';
+  if (fmt) params.format = fmt;
+  if (pil) params.pillar = pil;
+
+  document.getElementById('posts-loading').classList.remove('hidden');
+  document.getElementById('posts-empty').classList.add('hidden');
+  document.getElementById('posts-table-wrap').classList.add('hidden');
+
+  const data = await apiGet(params);
+  document.getElementById('posts-loading').classList.add('hidden');
+
+  if (!data.ok) {
+    document.getElementById('posts-empty').classList.remove('hidden');
+    document.getElementById('posts-empty').textContent = data.error || 'โหลดไม่สำเร็จ — ตรวจสอบ APPS_SCRIPT_URL';
+    return;
+  }
+
+  allPosts = data.data || [];
+  applyFilters();
+}
+
+function applyFilters() {
+  const pageFilter = (document.getElementById('f-page') || {}).value || '';
+  let rows = allPosts;
+  if (pageFilter) rows = rows.filter(r => r.Pages && r.Pages.toLowerCase().includes(pageFilter.toLowerCase()));
+  const fmt = (document.getElementById('f-format') || {}).value;
+  const pil = (document.getElementById('f-pillar') || {}).value;
+  if (fmt) rows = rows.filter(r => r.Format === fmt);
+  if (pil) rows = rows.filter(r => r.ContentPillar === pil);
+  renderPosts(rows);
+}
+
+function renderPosts(rows) {
+  if (rows.length === 0) {
+    document.getElementById('posts-empty').classList.remove('hidden');
+    document.getElementById('posts-table-wrap').classList.add('hidden');
+    return;
+  }
+  document.getElementById('posts-empty').classList.add('hidden');
+  document.getElementById('posts-table-wrap').classList.remove('hidden');
+
+  const tbody = document.getElementById('posts-tbody');
+  tbody.innerHTML = rows.map(r => {
+    // Render each page as its own chip
+    const pageChips = (r.Pages || '').split(',').map(p => p.trim()).filter(Boolean)
+      .map(p => `<span class="px-1.5 py-0.5 rounded-full text-xs font-medium mr-0.5 mb-0.5 inline-block ${pageChipClass(p)}">${p}</span>`)
+      .join('');
+    return `
+    <tr class="border-t border-slate-50">
+      <td class="px-4 py-2.5 text-slate-500 text-xs whitespace-nowrap">${formatDate(r.Date)}</td>
+      <td class="px-3 py-2 max-w-xs">${pageChips || '—'}</td>
+      <td class="px-4 py-2.5 text-xs">
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">${r.Format || '—'}</span>
+      </td>
+      <td class="px-4 py-2.5 text-xs text-slate-600">${r.ContentPillar || '—'}</td>
+      <td class="px-4 py-2.5 text-sm font-medium text-slate-800">${r.Topic || '—'}</td>
+      <td class="px-4 py-2.5 text-xs">
+        <span class="px-2 py-0.5 rounded-full text-xs ${r.Status === 'ลงแล้ว' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}">${r.Status || '—'}</span>
+      </td>
+      <td class="px-4 py-2.5 text-xs text-slate-400">${r.Note || ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Check duplicates: warn if same Format+Pillar posted to same page within 7 days
+function checkDuplicate() {
+  const pages  = getSelectedPages();
+  const format = document.getElementById('p-format') ? document.getElementById('p-format').value : '';
+  const pillar = document.getElementById('p-pillar') ? document.getElementById('p-pillar').value : '';
+  const warnEl = document.getElementById('dup-warn');
+  if (!warnEl) return;
+  if (!pages.length || !format || !pillar) { warnEl.classList.add('hidden'); return; }
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 7);
+
+  const hits = allPosts.filter(r => {
+    if (!r.Date || new Date(r.Date) < cutoff) return false;
+    if (r.Format !== format || r.ContentPillar !== pillar) return false;
+    const postedPages = (r.Pages || '').split(',').map(p => p.trim());
+    return pages.some(p => postedPages.includes(p));
+  });
+
+  if (hits.length > 0) {
+    const last = hits[0];
+    const daysAgo = Math.max(0, Math.round((new Date() - new Date(last.Date)) / 86400000));
+    const overlap = (last.Pages || '').split(',').map(p => p.trim()).filter(p => pages.includes(p));
+    warnEl.textContent = `⚠️ ${format} · ${pillar} ถูกลงในเพจ "${overlap.join(', ')}" ไปแล้ว ${daysAgo} วันที่แล้ว ("${last.Topic}")`;
+    warnEl.classList.remove('hidden');
+  } else {
+    warnEl.classList.add('hidden');
+  }
+}
+
+async function submitPost() {
+  const pages  = getSelectedPages();
+  const format = document.getElementById('p-format').value;
+  const pillar = document.getElementById('p-pillar').value;
+  const status = document.getElementById('p-status').value;
+  const topic  = document.getElementById('p-title').value.trim();
+  const note   = document.getElementById('p-notes').value.trim();
+
+  if (!pages.length) { toast('กรุณาเลือกเพจที่ลงอย่างน้อย 1 เพจ', 'warn'); return; }
+  if (!format)       { toast('กรุณาเลือก Format', 'warn'); return; }
+  if (!pillar)       { toast('กรุณาเลือก Content Pillar', 'warn'); return; }
+  if (!topic)        { toast('กรุณาใส่หัวข้อ/Topic', 'warn'); return; }
+
+  setLoading('btn-post-submit', 'btn-post-spinner', 'btn-post-label', true);
+
+  const result = await apiPost({
+    action: 'addPost',
+    data: { pages: pages.join(', '), format, contentPillar: pillar, topic, status, note }
+  });
+
+  setLoading('btn-post-submit', 'btn-post-spinner', 'btn-post-label', false);
+
+  if (result.ok) {
+    toast('✅ บันทึกสำเร็จ!', 'ok');
+    clearPostForm();
+    loadPosts();
+  } else {
+    toast('เกิดข้อผิดพลาด: ' + (result.error || ''), 'err');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// CONFIG NOTICE (when URL not set)
+// ══════════════════════════════════════════════════════
+function showConfigNotice() {
+  const sections = ['tab-post','tab-idea','tab-prompt','tab-story'];
+  // Only show in currently visible section's loading area
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+async function init() {
+  // Check connection
+  const connEl = document.getElementById('conn-status');
+  if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    connEl.textContent = '⚠️ ยังไม่ได้ตั้งค่า URL';
+    connEl.className = 'text-xs px-2.5 py-1 rounded-full bg-amber-500 text-white';
+    toast('⚠️ กรุณาตั้งค่า APPS_SCRIPT_URL ในไฟล์ index.html', 'warn', 8000);
+  } else {
+    const ping = await apiGet({ action: 'ping' });
+    if (ping.ok) {
+      connEl.textContent = '🟢 เชื่อมต่อแล้ว';
+      connEl.className = 'text-xs px-2.5 py-1 rounded-full bg-green-600 text-white';
+    } else {
+      connEl.textContent = '🔴 เชื่อมต่อไม่ได้';
+      connEl.className = 'text-xs px-2.5 py-1 rounded-full bg-red-600 text-white';
+    }
+  }
+  loadPosts();
+}
+
+// Placeholder inits for other tabs (will be replaced in next section)
+function initIdeaTab()   { renderIdeaTab(); }
+function initPromptTab() { renderPromptTab(); }
+function initStoryTab()  { renderStoryTab(); }
+
+// ══════════════════════════════════════════════════════
+// TAB 2: IDEA BANK
+// ══════════════════════════════════════════════════════
+async function renderIdeaTab() {
+  document.getElementById('idea-content').innerHTML = `
+    <h2 class="text-lg font-bold text-slate-800 mb-4">💡 คลังไอเดีย Content</h2>
+
+    <!-- Add Idea form -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
+      <h3 class="font-semibold text-slate-700 mb-4 text-sm uppercase tracking-wide">➕ เพิ่มไอเดียใหม่</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">แบรนด์</label>
+          <select id="i-brand" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+            <option value="">— เลือก —</option>
+            <option>Royal Enfield</option><option>Lambretta</option><option>Malaguti</option>
+            <option>GPX</option><option>Zontes</option><option>EV (FELO/RAPID/SUNRA)</option><option>Moto Addict</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">ประเภท Content</label>
+          <select id="i-type" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+            <option value="">— เลือก —</option>
+            <option>รีวิว / Product Feature</option><option>Lifestyle / Community</option>
+            <option>โปรโมชั่น / Campaign</option><option>Tutorial / How-to</option><option>Event</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">แพลตฟอร์ม</label>
+          <select id="i-platform" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+            <option value="">— เลือก —</option>
+            <option>Facebook</option><option>TikTok</option><option>Line OA</option><option>ทุกแพลตฟอร์ม</option>
+          </select>
+        </div>
+        <div class="col-span-2">
+          <label class="block text-xs text-slate-500 mb-1">ชื่อไอเดีย</label>
+          <input id="i-topic" type="text" placeholder="เช่น รีวิว Lambretta V-Special สีใหม่ ถ่ายในย่านเมืองเก่า" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">ความสำคัญ</label>
+          <select id="i-priority" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+            <option value="กลาง">กลาง</option><option value="สูง">สูง</option><option value="ต่ำ">ต่ำ</option>
+          </select>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="block text-xs text-slate-500 mb-1">Draft AI Prompt (optional)</label>
+        <textarea id="i-prompt" rows="2" placeholder="ร่าง prompt สำหรับ Claude/Gemini ที่จะใช้ทำ content นี้" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none resize-none"></textarea>
+      </div>
+      <button onclick="submitIdea()" id="btn-idea-submit"
+        class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+        <span id="btn-idea-spinner" class="hidden spinner"></span>
+        <span id="btn-idea-label">เพิ่มไอเดีย</span>
+      </button>
+    </div>
+
+    <!-- Brand Balance -->
+    <div id="brand-balance" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6"></div>
+
+    <!-- Filter -->
+    <div class="flex flex-wrap gap-2 mb-4 items-end">
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">กรอง: สถานะ</label>
+        <select id="if-status" onchange="applyIdeaFilters()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none bg-white">
+          <option value="">ทั้งหมด</option>
+          <option>ไอเดียใหม่</option><option>กำลังทำ</option><option>ใช้แล้ว</option><option>ยกเลิก</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">แบรนด์</label>
+        <select id="if-brand" onchange="applyIdeaFilters()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none bg-white">
+          <option value="">ทั้งหมด</option>
+          <option>Royal Enfield</option><option>Lambretta</option><option>Malaguti</option>
+          <option>GPX</option><option>Zontes</option><option>EV (FELO/RAPID/SUNRA)</option>
+        </select>
+      </div>
+      <button onclick="loadIdeas()" class="ml-auto px-4 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-600 transition">🔄 รีเฟรช</button>
+    </div>
+
+    <!-- Kanban -->
+    <div id="ideas-kanban" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div>
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3 px-1">
+          💡 ไอเดียใหม่ <span id="cnt-new" class="ml-1 bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full">0</span>
+        </div>
+        <div id="col-new" class="space-y-2 min-h-24"></div>
+      </div>
+      <div>
+        <div class="text-xs font-bold text-amber-600 uppercase tracking-wide mb-3 px-1">
+          ⚙️ กำลังทำ <span id="cnt-wip" class="ml-1 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">0</span>
+        </div>
+        <div id="col-wip" class="space-y-2 min-h-24"></div>
+      </div>
+      <div>
+        <div class="text-xs font-bold text-green-600 uppercase tracking-wide mb-3 px-1">
+          ✅ ใช้แล้ว <span id="cnt-done" class="ml-1 bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">0</span>
+        </div>
+        <div id="col-done" class="space-y-2 min-h-24"></div>
+      </div>
+    </div>
+  `;
+  loadIdeas();
+}
+
+async function loadIdeas() {
+  const params = { action: 'getIdeas' };
+  const s = document.getElementById('if-status') ? document.getElementById('if-status').value : '';
+  const b = document.getElementById('if-brand') ? document.getElementById('if-brand').value : '';
+  if (b) params.brand = b;
+
+  const data = await apiGet(params);
+  if (!data.ok) { toast('โหลด Idea ไม่ได้: ' + (data.error || ''), 'err'); return; }
+
+  allIdeas = data.data || [];
+  const filtered = s ? allIdeas.filter(r => r.Status === s) : allIdeas;
+  renderIdeas(filtered);
+  renderBrandBalance(allIdeas);
+}
+
+function renderIdeas(ideas) {
+  const cols = { 'ไอเดียใหม่': 'new', 'กำลังทำ': 'wip', 'ใช้แล้ว': 'done', 'ยกเลิก': 'done' };
+  ['new','wip','done'].forEach(c => {
+    const el = document.getElementById('col-' + c);
+    if (el) el.innerHTML = '';
+  });
+
+  let cnts = { new:0, wip:0, done:0 };
+
+  ideas.forEach(idea => {
+    const col = cols[idea.Status] || 'new';
+    cnts[col]++;
+    const el = document.getElementById('col-' + col);
+    if (!el) return;
+
+    const priorityClass = idea.Priority === 'สูง' ? 'badge-high' : idea.Priority === 'ต่ำ' ? 'badge-low' : 'badge-mid';
+    const card = document.createElement('div');
+    card.className = `idea-card ${brandCardClass(idea.Brand)} bg-white rounded-xl p-3 shadow-sm border border-slate-100`;
+    card.innerHTML = `
+      <div class="flex items-start justify-between gap-2 mb-1.5">
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium ${brandChipClass(idea.Brand)}">${idea.Brand || '—'}</span>
+        <span class="text-xs px-2 py-0.5 rounded-full font-medium ${priorityClass}">${idea.Priority || 'กลาง'}</span>
+      </div>
+      <p class="text-sm font-semibold text-slate-800 mb-1">${idea.Topic || '—'}</p>
+      <p class="text-xs text-slate-400 mb-2">${idea.ContentType || ''} · ${idea.Platform || ''}</p>
+      ${idea.AIPromptDraft ? `<p class="text-xs text-slate-500 bg-slate-50 rounded p-2 mb-2 line-clamp-2">${idea.AIPromptDraft}</p>` : ''}
+      <div class="flex items-center gap-1.5 mt-2">
+        <select onchange="changeIdeaStatus('${idea.ID}', this.value)" class="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1 outline-none bg-white">
+          <option ${idea.Status==='ไอเดียใหม่'?'selected':''}>ไอเดียใหม่</option>
+          <option ${idea.Status==='กำลังทำ'?'selected':''}>กำลังทำ</option>
+          <option ${idea.Status==='ใช้แล้ว'?'selected':''}>ใช้แล้ว</option>
+          <option ${idea.Status==='ยกเลิก'?'selected':''}>ยกเลิก</option>
+        </select>
+        <span class="text-xs text-slate-300">${formatDate(idea.CreatedDate)}</span>
+      </div>
+    `;
+    el.appendChild(card);
+  });
+
+  ['new','wip','done'].forEach(c => {
+    const cnt = document.getElementById('cnt-' + c);
+    if (cnt) cnt.textContent = cnts[c];
+  });
+}
+
+function renderBrandBalance(ideas) {
+  const el = document.getElementById('brand-balance');
+  if (!el) return;
+  const brands = ['Royal Enfield','Lambretta','Malaguti','GPX','Zontes','EV (FELO/RAPID/SUNRA)'];
+  const active = ideas.filter(i => i.Status !== 'ยกเลิก');
+  const total = active.length || 1;
+  const counts = {};
+  brands.forEach(b => counts[b] = 0);
+  active.forEach(i => { if (counts[i.Brand] !== undefined) counts[i.Brand]++; });
+
+  el.innerHTML = `
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold text-slate-700 text-sm">สัดส่วนไอเดียต่อแบรนด์</h3>
+      <span class="text-xs text-slate-400">รวม ${active.length} ไอเดีย</span>
+    </div>
+    ${brands.map(b => {
+      const pct = Math.round((counts[b] / total) * 100);
+      return `
+        <div class="mb-2">
+          <div class="flex justify-between text-xs text-slate-600 mb-1">
+            <span class="font-medium">${b}</span>
+            <span>${counts[b]} ไอเดีย (${pct}%)</span>
+          </div>
+          <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div class="h-full rounded-full ${brandBarColor(b)} transition-all" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+    }).join('')}
+  `;
+}
+
+function brandBarColor(brand) {
+  if (brand.includes('Royal'))    return 'bg-green-700';
+  if (brand.includes('Lambretta')) return 'bg-blue-600';
+  if (brand.includes('Malaguti')) return 'bg-pink-500';
+  if (brand.includes('GPX'))      return 'bg-red-500';
+  if (brand.includes('Zontes'))   return 'bg-yellow-500';
+  if (brand.includes('EV'))       return 'bg-teal-500';
+  return 'bg-slate-400';
+}
+
+async function changeIdeaStatus(id, status) {
+  const result = await apiPost({ action: 'updateStatus', sheet: 'ideas', id, status });
+  if (result.ok) {
+    toast('อัพเดทสำเร็จ ✓', 'ok', 1500);
+    loadIdeas();
+  } else {
+    toast('อัพเดทไม่สำเร็จ', 'err');
+  }
+}
+
+function applyIdeaFilters() { loadIdeas(); }
+
+async function submitIdea() {
+  const brand    = document.getElementById('i-brand').value;
+  const type     = document.getElementById('i-type').value;
+  const platform = document.getElementById('i-platform').value;
+  const topic    = document.getElementById('i-topic').value.trim();
+  const priority = document.getElementById('i-priority').value;
+  const draft    = document.getElementById('i-prompt').value.trim();
+
+  if (!brand || !type || !topic) { toast('กรุณากรอก แบรนด์, ประเภท, และชื่อไอเดีย', 'warn'); return; }
+
+  setLoading('btn-idea-submit','btn-idea-spinner','btn-idea-label', true, 'เพิ่มไอเดีย');
+  const result = await apiPost({ action:'addIdea', data:{ brand, contentType:type, platform, topic, priority, aiPromptDraft:draft } });
+  setLoading('btn-idea-submit','btn-idea-spinner','btn-idea-label', false, 'เพิ่มไอเดีย');
+
+  if (result.ok) {
+    toast('✅ เพิ่มไอเดียสำเร็จ!', 'ok');
+    ['i-brand','i-type','i-platform'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('i-topic').value = '';
+    document.getElementById('i-prompt').value = '';
+    loadIdeas();
+  } else {
+    toast('เกิดข้อผิดพลาด: ' + (result.error || ''), 'err');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// TAB 3: PROMPT GENERATOR
+// ══════════════════════════════════════════════════════
+async function renderPromptTab() {
+  document.getElementById('prompt-content').innerHTML = `
+    <h2 class="text-lg font-bold text-slate-800 mb-4">✍️ Prompt Generator</h2>
+    <div class="grid sm:grid-cols-2 gap-6">
+
+      <!-- Left: Generator -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <h3 class="font-semibold text-slate-700 mb-4 text-sm uppercase tracking-wide">🔧 สร้าง Prompt</h3>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">แบรนด์</label>
+            <select id="pg-brand" onchange="loadPromptTemplates()" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+              <option value="">— เลือก —</option>
+              <option>Royal Enfield</option><option>Lambretta</option><option>Malaguti</option>
+              <option>GPX</option><option>Zontes</option><option>EV (FELO/RAPID/SUNRA)</option><option>ทุกแบรนด์</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">ประเภท</label>
+            <select id="pg-category" onchange="loadPromptTemplates()" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+              <option value="">— เลือก —</option>
+              <option>AI Image</option><option>Caption</option><option>TikTok Script</option><option>Storyboard</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Template picker -->
+        <div id="pg-template-pick" class="hidden mb-4">
+          <label class="block text-xs text-slate-500 mb-1">เลือก Template</label>
+          <select id="pg-template-sel" onchange="fillTemplateVars()" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+            <option value="">— เลือก template —</option>
+          </select>
+        </div>
+
+        <!-- Dynamic variable fields -->
+        <div id="pg-vars" class="space-y-2 mb-4"></div>
+
+        <!-- Output -->
+        <div id="pg-output-wrap" class="hidden">
+          <label class="block text-xs text-slate-500 mb-1">Prompt สำเร็จรูป</label>
+          <textarea id="pg-output" rows="6" readonly class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 outline-none resize-none font-mono text-xs"></textarea>
+          <div class="flex gap-2 mt-2">
+            <button onclick="copyPrompt()" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">📋 Copy Prompt</button>
+            <button onclick="savePrompt()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition">💾 บันทึก</button>
+          </div>
+        </div>
+
+        <!-- Save new prompt form -->
+        <div id="pg-save-form" class="hidden mt-4 border-t border-slate-100 pt-4">
+          <p class="text-xs text-slate-500 mb-2 font-semibold">บันทึก Prompt ใหม่เข้าคลัง</p>
+          <input id="pg-save-tags" type="text" placeholder="Tags: เช่น heritage,product,review" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-2 focus:ring-2 focus:ring-orange-300 outline-none">
+          <button onclick="confirmSavePrompt()" class="w-full bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-700 transition">บันทึกเข้าคลัง</button>
+        </div>
+      </div>
+
+      <!-- Right: Prompt Library -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-slate-700 text-sm uppercase tracking-wide">📚 คลัง Templates</h3>
+          <button onclick="loadAllPrompts()" class="text-xs text-slate-400 hover:text-slate-600">🔄</button>
+        </div>
+        <div id="prompt-library" class="space-y-2 max-h-96 overflow-y-auto thin-scroll">
+          <div class="text-slate-400 text-sm text-center py-4"><div class="spinner mx-auto mb-2"></div>กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
+  `;
+  loadAllPrompts();
+}
+
+async function loadPromptTemplates() {
+  const brand    = document.getElementById('pg-brand').value;
+  const category = document.getElementById('pg-category').value;
+  if (!brand || !category) return;
+
+  const data = await apiGet({ action:'getPrompts', brand, category });
+  if (!data.ok || !data.data.length) {
+    document.getElementById('pg-template-pick').classList.add('hidden');
+    document.getElementById('pg-vars').innerHTML = '<p class="text-xs text-slate-400">ไม่พบ template สำหรับตัวเลือกนี้ในคลัง</p>';
+    return;
+  }
+
+  const sel = document.getElementById('pg-template-sel');
+  sel.innerHTML = '<option value="">— เลือก template —</option>';
+  data.data.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.ID;
+    opt.textContent = `${t.Category} · ${t.Brand} · ${t.Tags || ''}`;
+    opt.dataset.prompt = t.PromptText;
+    opt.dataset.id = t.ID;
+    sel.appendChild(opt);
+  });
+  document.getElementById('pg-template-pick').classList.remove('hidden');
+  document.getElementById('pg-vars').innerHTML = '';
+  document.getElementById('pg-output-wrap').classList.add('hidden');
+}
+
+function fillTemplateVars() {
+  const sel = document.getElementById('pg-template-sel');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.dataset.prompt) return;
+
+  const promptText = opt.dataset.prompt;
+  const matches = [...promptText.matchAll(/\{(\w+)\}/g)];
+  const vars = [...new Set(matches.map(m => m[1]))];
+
+  const varsDiv = document.getElementById('pg-vars');
+  if (vars.length === 0) {
+    varsDiv.innerHTML = '';
+    document.getElementById('pg-output').value = promptText;
+    document.getElementById('pg-output-wrap').classList.remove('hidden');
+    return;
+  }
+
+  varsDiv.innerHTML = vars.map(v => `
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">{${v}}</label>
+      <input data-var="${v}" type="text" placeholder="${varPlaceholder(v)}"
+        oninput="updatePromptOutput()"
+        class="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+    </div>
+  `).join('');
+
+  document.getElementById('pg-output').value = promptText;
+  document.getElementById('pg-output-wrap').classList.remove('hidden');
+  document.getElementById('pg-save-form').classList.add('hidden');
+}
+
+function varPlaceholder(v) {
+  const map = {
+    model_name: 'เช่น Meteor 350',
+    price: 'เช่น 189,000',
+    feature: 'จุดเด่น เช่น ระบบเบรก ABS',
+    hook_line: 'ประโยค hook เช่น "นี่คือรถที่คุณรอมานาน"',
+    branch: 'เช่น หาดใหญ่',
+    action_hook: 'เช่น ออกตัวสุดเร็ว',
+    pain_point: 'เช่น ค่าน้ำมันแพงมาก',
+    duration_sec: 'เช่น 30',
+    cost_per_km: 'เช่น 0.50',
+    saving_percent: 'เช่น 80',
+    use_case: 'เช่น ส่งของในเมือง',
+    promotion: 'เช่น ฟรีประกัน 2 ปี',
+    charge_time: 'เช่น 4',
+    range: 'เช่น 100',
+    feature_1: 'จุดเด่นที่ 1',
+    feature_2: 'จุดเด่นที่ 2',
+    promotion_name: 'ชื่อโปร เช่น MID YEAR SALE',
+    benefit_1: 'สิทธิพิเศษ 1',
+    benefit_2: 'สิทธิพิเศษ 2',
+    benefit_3: 'สิทธิพิเศษ 3',
+    end_date: 'เช่น 30 มิ.ย.',
+  };
+  return map[v] || v;
+}
+
+function updatePromptOutput() {
+  const sel = document.getElementById('pg-template-sel');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.dataset.prompt) return;
+
+  let text = opt.dataset.prompt;
+  document.querySelectorAll('[data-var]').forEach(input => {
+    const v = input.dataset.var;
+    const val = input.value || `{${v}}`;
+    text = text.replaceAll(`{${v}}`, val);
+  });
+  document.getElementById('pg-output').value = text;
+}
+
+async function copyPrompt() {
+  const text = document.getElementById('pg-output').value;
+  if (!text) return;
+  await navigator.clipboard.writeText(text);
+  toast('📋 Copy แล้ว!', 'ok', 2000);
+
+  // Increment use count
+  const sel = document.getElementById('pg-template-sel');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.id) {
+    apiPost({ action: 'incrementUse', id: opt.dataset.id });
+  }
+}
+
+function savePrompt() {
+  document.getElementById('pg-save-form').classList.toggle('hidden');
+}
+
+async function confirmSavePrompt() {
+  const brand    = document.getElementById('pg-brand').value;
+  const category = document.getElementById('pg-category').value;
+  const text     = document.getElementById('pg-output').value;
+  const tags     = document.getElementById('pg-save-tags').value;
+  if (!text) { toast('ไม่มี Prompt ที่จะบันทึก', 'warn'); return; }
+
+  const result = await apiPost({ action:'addPrompt', data:{ brand, category, promptText:text, tags } });
+  if (result.ok) {
+    toast('✅ บันทึก template สำเร็จ!', 'ok');
+    document.getElementById('pg-save-form').classList.add('hidden');
+    loadAllPrompts();
+  } else {
+    toast('บันทึกไม่สำเร็จ: ' + (result.error || ''), 'err');
+  }
+}
+
+async function loadAllPrompts() {
+  const data = await apiGet({ action: 'getPrompts' });
+  const lib = document.getElementById('prompt-library');
+  if (!lib) return;
+
+  if (!data.ok || !data.data.length) {
+    lib.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">ยังไม่มี template ในคลัง</p>';
+    return;
+  }
+
+  allPrompts = data.data;
+  lib.innerHTML = allPrompts.map(t => `
+    <div class="border border-slate-100 rounded-xl p-3 hover:bg-slate-50 transition">
+      <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+        <span class="text-xs font-semibold text-slate-600">${t.Category || ''}</span>
+        <span class="px-2 py-0.5 rounded-full text-xs ${brandChipClass(t.Brand)}">${t.Brand || ''}</span>
+        ${t.UseCount > 0 ? `<span class="ml-auto text-xs text-slate-400">ใช้ ${t.UseCount} ครั้ง</span>` : ''}
+      </div>
+      <p class="text-xs text-slate-500 line-clamp-2 font-mono">${t.PromptText || ''}</p>
+      <div class="flex gap-2 mt-2">
+        <button onclick="quickCopy(\`${t.PromptText.replace(/`/g,"'")}\`, '${t.ID}')"
+          class="text-xs px-3 py-1 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition font-medium">Copy</button>
+        ${t.Tags ? `<span class="text-xs text-slate-300">${t.Tags}</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function quickCopy(text, id) {
+  await navigator.clipboard.writeText(text);
+  toast('📋 Copy แล้ว!', 'ok', 2000);
+  if (id) apiPost({ action: 'incrementUse', id });
+}
+
+// ══════════════════════════════════════════════════════
+// TAB 4: STORYBOARD BUILDER
+// ══════════════════════════════════════════════════════
+async function renderStoryTab() {
+  document.getElementById('story-content').innerHTML = `
+    <h2 class="text-lg font-bold text-slate-800 mb-4">🎬 Storyboard Builder</h2>
+
+    <!-- Setup form -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
+      <h3 class="font-semibold text-slate-700 mb-4 text-sm uppercase tracking-wide">⚙️ ตั้งค่า Video</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">แบรนด์</label>
+          <select id="sb-brand" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+            <option value="">— เลือก —</option>
+            <option>Royal Enfield</option><option>Lambretta</option><option>Malaguti</option>
+            <option>GPX</option><option>Zontes</option><option>EV</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">ประเภท Video</label>
+          <select id="sb-type" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+            <option value="">— เลือก —</option>
+            <option>Product Review</option><option>Lifestyle</option>
+            <option>TikTok</option><option>โปรโมชั่น</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">ความยาว</label>
+          <select id="sb-duration" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+            <option>15s</option><option>30s</option><option selected>60s</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button onclick="generateStoryboard()" id="btn-sb-gen"
+            class="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2">
+            <span id="btn-sb-spinner" class="hidden spinner"></span>
+            <span id="btn-sb-label">สร้าง Storyboard</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene table -->
+    <div id="sb-result" class="hidden">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
+        <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 id="sb-title" class="font-semibold text-slate-700 text-sm"></h3>
+          <div class="flex gap-2">
+            <button onclick="addScene()" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition">+ เพิ่ม Scene</button>
+            <button onclick="copyStoryboard()" class="text-xs px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition">📋 Copy ทั้งหมด</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto thin-scroll">
+          <table class="w-full data-table text-sm">
+            <thead>
+              <tr>
+                <th class="px-3 py-2.5 text-left w-10">#</th>
+                <th class="px-3 py-2.5 text-left w-32">มุมกล้อง</th>
+                <th class="px-3 py-2.5 text-left">Action / ฉาก</th>
+                <th class="px-3 py-2.5 text-left">Props / สถานที่</th>
+                <th class="px-3 py-2.5 text-left">เสียง / เพลง</th>
+                <th class="px-3 py-2.5 w-8"></th>
+              </tr>
+            </thead>
+            <tbody id="sb-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <button onclick="saveStoryboard()" class="px-6 py-2 bg-slate-800 text-white rounded-lg text-sm font-semibold hover:bg-slate-700 transition">💾 บันทึกลง Google Sheets</button>
+    </div>
+  `;
+}
+
+let sbScenes = [];
+
+async function generateStoryboard() {
+  const brand    = document.getElementById('sb-brand').value;
+  const type     = document.getElementById('sb-type').value;
+  const duration = document.getElementById('sb-duration').value;
+
+  if (!brand || !type) { toast('กรุณาเลือก แบรนด์ และ ประเภท Video', 'warn'); return; }
+
+  document.getElementById('btn-sb-spinner').classList.remove('hidden');
+  document.getElementById('btn-sb-label').textContent = 'กำลังสร้าง...';
+  document.getElementById('btn-sb-gen').disabled = true;
+
+  const data = await apiGet({ action:'getStoryboardTpls', brand, videoType:type, duration });
+
+  document.getElementById('btn-sb-spinner').classList.add('hidden');
+  document.getElementById('btn-sb-label').textContent = 'สร้าง Storyboard';
+  document.getElementById('btn-sb-gen').disabled = false;
+
+  if (!data.ok || !data.data.length) {
+    toast('ไม่พบ template สำหรับตัวเลือกนี้', 'warn');
+    return;
+  }
+
+  sbScenes = data.data.map((s, i) => ({
+    order: s.SceneOrder || (i + 1),
+    angle: s.CameraAngle || '',
+    action: s.Action || '',
+    props: s.Props || '',
+    audio: s.Audio || ''
+  }));
+
+  document.getElementById('sb-title').textContent = `${brand} · ${type} · ${duration}`;
+  document.getElementById('sb-result').classList.remove('hidden');
+  renderSceneTable();
+}
+
+function renderSceneTable() {
+  const tbody = document.getElementById('sb-tbody');
+  tbody.innerHTML = sbScenes.map((s, i) => `
+    <tr class="border-t border-slate-50">
+      <td class="px-3 py-2 text-slate-400 text-xs font-mono">${s.order}</td>
+      <td class="px-3 py-2">
+        <select onchange="updateScene(${i},'angle',this.value)" class="w-full text-xs border border-slate-200 rounded px-2 py-1 outline-none bg-white">
+          ${['Wide Shot','Close-up','Medium','POV','Overhead','Dutch Angle','Low Angle'].map(a =>
+            `<option ${s.angle===a?'selected':''}>${a}</option>`
+          ).join('')}
+        </select>
+      </td>
+      <td class="px-3 py-2">
+        <input value="${escHtml(s.action)}" oninput="updateScene(${i},'action',this.value)"
+          class="w-full text-xs border border-slate-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-orange-300 min-w-32">
+      </td>
+      <td class="px-3 py-2">
+        <input value="${escHtml(s.props)}" oninput="updateScene(${i},'props',this.value)"
+          class="w-full text-xs border border-slate-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-orange-300 min-w-28">
+      </td>
+      <td class="px-3 py-2">
+        <input value="${escHtml(s.audio)}" oninput="updateScene(${i},'audio',this.value)"
+          class="w-full text-xs border border-slate-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-orange-300 min-w-28">
+      </td>
+      <td class="px-3 py-2">
+        <button onclick="removeScene(${i})" class="text-slate-300 hover:text-red-400 text-sm transition">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function updateScene(i, field, val) { sbScenes[i][field] = val; }
+
+function addScene() {
+  sbScenes.push({ order: sbScenes.length + 1, angle: 'Wide Shot', action: '', props: '', audio: '' });
+  renderSceneTable();
+}
+
+function removeScene(i) {
+  sbScenes.splice(i, 1);
+  sbScenes.forEach((s, idx) => s.order = idx + 1);
+  renderSceneTable();
+}
+
+function copyStoryboard() {
+  const brand    = document.getElementById('sb-brand').value;
+  const type     = document.getElementById('sb-type').value;
+  const duration = document.getElementById('sb-duration').value;
+  let text = `🎬 STORYBOARD: ${brand} | ${type} | ${duration}\n${'─'.repeat(60)}\n`;
+  sbScenes.forEach(s => {
+    text += `\nScene ${s.order}: [${s.angle}]\n`;
+    text += `  Action : ${s.action}\n`;
+    text += `  Props  : ${s.props}\n`;
+    text += `  Audio  : ${s.audio}\n`;
+  });
+  navigator.clipboard.writeText(text);
+  toast('📋 Copy Storyboard แล้ว!', 'ok');
+}
+
+async function saveStoryboard() {
+  const brand    = document.getElementById('sb-brand').value;
+  const type     = document.getElementById('sb-type').value;
+  const duration = document.getElementById('sb-duration').value;
+
+  for (const s of sbScenes) {
+    await apiPost({ action:'addPost', data:{
+      branch: 'ทุกสาขา', platform: 'Internal', brand,
+      contentType: `Storyboard: ${type}`, title: `${brand} ${type} ${duration} — Scene ${s.order}`,
+      status: 'Draft', notes: `[${s.angle}] ${s.action}`
+    }});
+  }
+  toast('✅ บันทึก Storyboard ลง Sheets แล้ว!', 'ok');
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Script is at bottom of body, DOM already parsed — call directly
+wirePageCheckboxes();
+init();
+</script>
+</body>
+</html>
